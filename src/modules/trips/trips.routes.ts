@@ -22,6 +22,7 @@ const coordinateSchema = {
 const startTripSchema = z.object({
   driverId: z.string().min(1),
   vehicleId: z.string().min(1),
+  routeTemplateId: z.string().min(1).optional(),
   startLatitude: coordinateSchema.latitude.optional(),
   startLongitude: coordinateSchema.longitude.optional(),
 });
@@ -82,6 +83,7 @@ tripsRouter.get(
         vehicle: true,
         organization: true,
         carOwner: { include: { user: true } },
+        routeTemplate: true,
         _count: { select: { locations: true, violations: true, alerts: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -122,6 +124,20 @@ tripsRouter.post(
 
     assertOrganizationAccess(req.auth, driver.organizationId);
 
+    const routeTemplate = input.routeTemplateId
+      ? await prisma.routeTemplate.findUniqueOrThrow({ where: { id: input.routeTemplateId } })
+      : null;
+
+    if (routeTemplate) {
+      if (routeTemplate.organizationId !== driver.organizationId) {
+        throw new AppError(400, "Route template must belong to the driver's organization.");
+      }
+
+      if (routeTemplate.status !== "ACTIVE") {
+        throw new AppError(400, "Route template must be active before it can be used for a trip.");
+      }
+    }
+
     const activeAssignment = await prisma.driverVehicleAssignment.findFirst({
       where: {
         driverId: input.driverId,
@@ -152,6 +168,7 @@ tripsRouter.post(
           vehicleId: vehicle.id,
           organizationId: driver.organizationId,
           carOwnerId: vehicle.carOwnerId,
+          routeTemplateId: routeTemplate?.id,
           startTime: new Date(),
           startLatitude: input.startLatitude,
           startLongitude: input.startLongitude,
@@ -160,6 +177,7 @@ tripsRouter.post(
           driver: { include: { user: true } },
           vehicle: true,
           carOwner: { include: { user: true } },
+          routeTemplate: true,
         },
       });
 
@@ -167,7 +185,7 @@ tripsRouter.post(
         recipientUserId: vehicle.carOwner.userId,
         recipientRole: "CAR_OWNER",
         alertType: "TRIP_STARTED",
-        message: `${driver.user.fullName} started a trip with vehicle ${vehicle.registrationNumber}.`,
+        message: `${driver.user.fullName} started ${routeTemplate ? `${routeTemplate.name} ` : "a trip "}with vehicle ${vehicle.registrationNumber}.`,
         tripId: created.id,
       });
 
@@ -176,6 +194,9 @@ tripsRouter.post(
         action: "TRIP_STARTED",
         entityType: "Trip",
         entityId: created.id,
+        details: {
+          routeTemplateId: routeTemplate?.id,
+        },
       });
 
       return created;
@@ -184,7 +205,7 @@ tripsRouter.post(
     res.status(201).json({
       success: true,
       data: trip,
-      speedLimit: driver.organization.speedLimit ?? env.DEFAULT_SPEED_LIMIT,
+      speedLimit: routeTemplate?.speedLimit ?? driver.organization.speedLimit ?? env.DEFAULT_SPEED_LIMIT,
     });
   }),
 );
@@ -203,6 +224,7 @@ tripsRouter.post(
         driver: { include: { user: true } },
         vehicle: true,
         carOwner: { include: { user: true } },
+        routeTemplate: true,
       },
     });
 
@@ -216,7 +238,7 @@ tripsRouter.post(
 
     assertOrganizationAccess(req.auth, trip.organizationId);
 
-    const speedLimit = input.speedLimit ?? env.DEFAULT_SPEED_LIMIT;
+    const speedLimit = input.speedLimit ?? trip.routeTemplate?.speedLimit ?? env.DEFAULT_SPEED_LIMIT;
 
     const result = await prisma.$transaction(async (tx) => {
       const location = await tx.tripLocation.create({
@@ -311,6 +333,7 @@ tripsRouter.post(
         driver: { include: { user: true } },
         vehicle: true,
         carOwner: { include: { user: true } },
+        routeTemplate: true,
       },
     });
 
@@ -327,7 +350,7 @@ tripsRouter.post(
     const results: { accepted: number; violations: number } = { accepted: 0, violations: 0 };
 
     for (const point of input.points) {
-      const speedLimit = point.speedLimit ?? env.DEFAULT_SPEED_LIMIT;
+      const speedLimit = point.speedLimit ?? trip.routeTemplate?.speedLimit ?? env.DEFAULT_SPEED_LIMIT;
 
       await prisma.$transaction(async (tx) => {
         await tx.tripLocation.create({
@@ -457,6 +480,7 @@ tripsRouter.patch(
         driver: { include: { user: true } },
         vehicle: true,
         carOwner: { include: { user: true } },
+        routeTemplate: true,
         locations: { orderBy: { recordedAt: "asc" } },
       },
     });
@@ -497,13 +521,20 @@ tripsRouter.patch(
           distance,
           status: "COMPLETED",
         },
+        include: {
+          driver: { include: { user: true } },
+          vehicle: true,
+          carOwner: { include: { user: true } },
+          routeTemplate: true,
+          _count: { select: { locations: true, violations: true, alerts: true } },
+        },
       });
 
       await createAlert(tx, {
         recipientUserId: trip.carOwner.userId,
         recipientRole: "CAR_OWNER",
         alertType: "TRIP_ENDED",
-        message: `${trip.driver.user.fullName} ended a trip with vehicle ${trip.vehicle.registrationNumber}.`,
+        message: `${trip.driver.user.fullName} ended ${trip.routeTemplate ? `${trip.routeTemplate.name} ` : "a trip "}with vehicle ${trip.vehicle.registrationNumber}.`,
         tripId: trip.id,
       });
 

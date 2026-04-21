@@ -61,6 +61,43 @@ function randomGhanaCoord() {
   };
 }
 
+async function upsertRouteTemplate({ key: _key, org, ...def }) {
+  return prisma.routeTemplate.upsert({
+    where: {
+      organizationId_name: {
+        organizationId: org.id,
+        name: def.name,
+      },
+    },
+    update: {
+      origin: def.origin,
+      destination: def.destination,
+      originLatitude: def.originLatitude,
+      originLongitude: def.originLongitude,
+      destinationLatitude: def.destinationLatitude,
+      destinationLongitude: def.destinationLongitude,
+      estimatedDistanceKm: def.estimatedDistanceKm,
+      estimatedDurationMinutes: def.estimatedDurationMinutes,
+      speedLimit: def.speedLimit,
+      status: "ACTIVE",
+    },
+    create: {
+      organizationId: org.id,
+      name: def.name,
+      origin: def.origin,
+      destination: def.destination,
+      originLatitude: def.originLatitude,
+      originLongitude: def.originLongitude,
+      destinationLatitude: def.destinationLatitude,
+      destinationLongitude: def.destinationLongitude,
+      estimatedDistanceKm: def.estimatedDistanceKm,
+      estimatedDurationMinutes: def.estimatedDurationMinutes,
+      speedLimit: def.speedLimit,
+      status: "ACTIVE",
+    },
+  });
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -273,7 +310,109 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 4. CAR OWNERS
+  // 4. ROUTE TEMPLATES
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const routeTemplateDefs = [
+    {
+      key: "metroAccraKumasi", org: org1, name: "Accra to Kumasi",
+      origin: "Accra", destination: "Kumasi",
+      originLatitude: 5.6037, originLongitude: -0.1870, destinationLatitude: 6.6885, destinationLongitude: -1.6244,
+      estimatedDistanceKm: 248, estimatedDurationMinutes: 270, speedLimit: 70,
+    },
+    {
+      key: "metroKumasiAccra", org: org1, name: "Kumasi to Accra",
+      origin: "Kumasi", destination: "Accra",
+      originLatitude: 6.6885, originLongitude: -1.6244, destinationLatitude: 5.6037, destinationLongitude: -0.1870,
+      estimatedDistanceKm: 248, estimatedDurationMinutes: 270, speedLimit: 70,
+    },
+    {
+      key: "metroAccraTakoradi", org: org1, name: "Accra to Takoradi",
+      origin: "Accra", destination: "Takoradi",
+      originLatitude: 5.6037, originLongitude: -0.1870, destinationLatitude: 4.8845, destinationLongitude: -1.7554,
+      estimatedDistanceKm: 220, estimatedDurationMinutes: 240, speedLimit: 70,
+    },
+    {
+      key: "metroTakoradiAccra", org: org1, name: "Takoradi to Accra",
+      origin: "Takoradi", destination: "Accra",
+      originLatitude: 4.8845, originLongitude: -1.7554, destinationLatitude: 5.6037, destinationLongitude: -0.1870,
+      estimatedDistanceKm: 220, estimatedDurationMinutes: 240, speedLimit: 70,
+    },
+    {
+      key: "metroAccraTema", org: org1, name: "Accra Urban Shuttle",
+      origin: "Accra", destination: "Tema",
+      originLatitude: 5.5560, originLongitude: -0.1970, destinationLatitude: 5.6698, destinationLongitude: -0.0166,
+      estimatedDistanceKm: 30, estimatedDurationMinutes: 60, speedLimit: 60,
+    },
+    {
+      key: "metroAccraNsawam", org: org1, name: "Accra to Nsawam",
+      origin: "Accra", destination: "Nsawam",
+      originLatitude: 5.5550, originLongitude: -0.2020, destinationLatitude: 5.8080, destinationLongitude: -0.3510,
+      estimatedDistanceKm: 38, estimatedDurationMinutes: 75, speedLimit: 70,
+    },
+    {
+      key: "stcAccraKumasi", org: org2, name: "Accra to Kumasi",
+      origin: "Accra", destination: "Kumasi",
+      originLatitude: 5.6000, originLongitude: -0.1850, destinationLatitude: 6.6885, destinationLongitude: -1.6244,
+      estimatedDistanceKm: 267, estimatedDurationMinutes: 300, speedLimit: 80,
+    },
+    {
+      key: "stcKumasiAccra", org: org2, name: "Kumasi to Accra",
+      origin: "Kumasi", destination: "Accra",
+      originLatitude: 6.6885, originLongitude: -1.6244, destinationLatitude: 5.6000, destinationLongitude: -0.1850,
+      estimatedDistanceKm: 267, estimatedDurationMinutes: 300, speedLimit: 80,
+    },
+    {
+      key: "stcAccraTakoradi", org: org2, name: "Accra to Takoradi",
+      origin: "Accra", destination: "Takoradi",
+      originLatitude: 5.6000, originLongitude: -0.1850, destinationLatitude: 4.8845, destinationLongitude: -1.7554,
+      estimatedDistanceKm: 220, estimatedDurationMinutes: 240, speedLimit: 80,
+    },
+    {
+      key: "stcTakoradiAccra", org: org2, name: "Takoradi to Accra",
+      origin: "Takoradi", destination: "Accra",
+      originLatitude: 4.8845, originLongitude: -1.7554, destinationLatitude: 5.6000, destinationLongitude: -0.1850,
+      estimatedDistanceKm: 220, estimatedDurationMinutes: 240, speedLimit: 80,
+    },
+    {
+      key: "stcAccraNkawkaw", org: org2, name: "Accra to Nkawkaw",
+      origin: "Accra", destination: "Nkawkaw",
+      originLatitude: 5.5980, originLongitude: -0.1880, destinationLatitude: 6.5510, destinationLongitude: -0.7660,
+      estimatedDistanceKm: 158, estimatedDurationMinutes: 210, speedLimit: 80,
+    },
+    {
+      key: "vvipKumasiAccra", org: org3, name: "Kumasi to Accra",
+      origin: "Kumasi", destination: "Accra",
+      originLatitude: 6.6885, originLongitude: -1.6244, destinationLatitude: 5.6037, destinationLongitude: -0.1870,
+      estimatedDistanceKm: 267, estimatedDurationMinutes: 300, speedLimit: 100,
+    },
+    {
+      key: "vvipAccraKumasi", org: org3, name: "Accra to Kumasi",
+      origin: "Accra", destination: "Kumasi",
+      originLatitude: 5.6037, originLongitude: -0.1870, destinationLatitude: 6.6885, destinationLongitude: -1.6244,
+      estimatedDistanceKm: 267, estimatedDurationMinutes: 300, speedLimit: 100,
+    },
+    {
+      key: "vvipKumasiTamale", org: org3, name: "Kumasi to Tamale",
+      origin: "Kumasi", destination: "Tamale",
+      originLatitude: 6.6885, originLongitude: -1.6244, destinationLatitude: 9.4075, destinationLongitude: -0.8533,
+      estimatedDistanceKm: 385, estimatedDurationMinutes: 360, speedLimit: 100,
+    },
+    {
+      key: "vvipTamaleKumasi", org: org3, name: "Tamale to Kumasi",
+      origin: "Tamale", destination: "Kumasi",
+      originLatitude: 9.4075, originLongitude: -0.8533, destinationLatitude: 6.6885, destinationLongitude: -1.6244,
+      estimatedDistanceKm: 385, estimatedDurationMinutes: 360, speedLimit: 100,
+    },
+  ];
+
+  const routeTemplates = {};
+  for (const def of routeTemplateDefs) {
+    routeTemplates[def.key] = await upsertRouteTemplate(def);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 5. CAR OWNERS
   // ══════════════════════════════════════════════════════════════════════════
 
   const ownerDefs = [
@@ -299,7 +438,7 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 5. DRIVERS
+  // 6. DRIVERS
   // ══════════════════════════════════════════════════════════════════════════
 
   const driverDefs = [
@@ -347,7 +486,7 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 6. VEHICLES
+  // 7. VEHICLES
   // ══════════════════════════════════════════════════════════════════════════
 
   const vehicleDefs = [
@@ -384,10 +523,16 @@ async function main() {
       },
     });
     vehicles.push(v);
+
+    await prisma.organizationUser.upsert({
+      where: { organizationId_userId: { organizationId: def.org.id, userId: def.owner.userId } },
+      update: { role: "CAR_OWNER", status: "ACTIVE" },
+      create: { organizationId: def.org.id, userId: def.owner.userId, role: "CAR_OWNER" },
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 7. DRIVER-VEHICLE ASSIGNMENTS
+  // 8. DRIVER-VEHICLE ASSIGNMENTS
   // ══════════════════════════════════════════════════════════════════════════
 
   // Map: driver index → vehicle index
@@ -409,31 +554,31 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 8. TRIPS (historical + in-progress)
+  // 9. TRIPS (historical + in-progress)
   // ══════════════════════════════════════════════════════════════════════════
 
   const tripDefs = [
     // Recent completed trips
-    { di: 0, vi: 0, org: org1, owneri: 0, daysBack: 0,  duration: 4.5,  avg: 64, max: 78,  dist: 248, status: "COMPLETED",    lat1: 5.603,  lon1: -0.187, lat2: 6.688, lon2: -1.624 },
-    { di: 1, vi: 1, org: org1, owneri: 0, daysBack: 0,  duration: 2.2,  avg: 52, max: 71,  dist: 115, status: "COMPLETED",    lat1: 5.556,  lon1: -0.197, lat2: 5.751, lon2: -0.211 },
-    { di: 5, vi: 5, org: org2, owneri: 2, daysBack: 0,  duration: 5.1,  avg: 72, max: 142, dist: 267, status: "COMPLETED",    lat1: 5.600,  lon1: -0.185, lat2: 6.687, lon2: -1.625 },
-    { di: 6, vi: 6, org: org2, owneri: 3, daysBack: 0,  duration: 3.8,  avg: 68, max: 102, dist: 198, status: "COMPLETED",    lat1: 5.598,  lon1: -0.188, lat2: 6.412, lon2: -0.912 },
-    { di: 9, vi: 9, org: org3, owneri: 4, daysBack: 0,  duration: 6.2,  avg: 88, max: 115, dist: 412, status: "COMPLETED",    lat1: 6.688,  lon1: -1.624, lat2: 9.401, lon2: -0.839 },
+    { route: "metroAccraKumasi", di: 0, vi: 0, org: org1, owneri: 0, daysBack: 0,  duration: 4.5,  avg: 64, max: 78,  dist: 248, status: "COMPLETED",    lat1: 5.603,  lon1: -0.187, lat2: 6.688, lon2: -1.624 },
+    { route: "metroAccraTema", di: 1, vi: 1, org: org1, owneri: 0, daysBack: 0,  duration: 2.2,  avg: 52, max: 71,  dist: 115, status: "COMPLETED",    lat1: 5.556,  lon1: -0.197, lat2: 5.751, lon2: -0.211 },
+    { route: "stcAccraKumasi", di: 5, vi: 5, org: org2, owneri: 2, daysBack: 0,  duration: 5.1,  avg: 72, max: 142, dist: 267, status: "COMPLETED",    lat1: 5.600,  lon1: -0.185, lat2: 6.687, lon2: -1.625 },
+    { route: "stcAccraNkawkaw", di: 6, vi: 6, org: org2, owneri: 3, daysBack: 0,  duration: 3.8,  avg: 68, max: 102, dist: 198, status: "COMPLETED",    lat1: 5.598,  lon1: -0.188, lat2: 6.412, lon2: -0.912 },
+    { route: "vvipKumasiTamale", di: 9, vi: 9, org: org3, owneri: 4, daysBack: 0,  duration: 6.2,  avg: 88, max: 115, dist: 412, status: "COMPLETED",    lat1: 6.688,  lon1: -1.624, lat2: 9.401, lon2: -0.839 },
     // Yesterday
-    { di: 2, vi: 2, org: org1, owneri: 1, daysBack: 1,  duration: 3.0,  avg: 48, max: 65,  dist: 145, status: "COMPLETED",    lat1: 5.555,  lon1: -0.202, lat2: 5.900, lon2: -0.198 },
-    { di: 7, vi: 7, org: org2, owneri: 3, daysBack: 1,  duration: 4.4,  avg: 75, max: 108, dist: 298, status: "COMPLETED",    lat1: 5.601,  lon1: -0.186, lat2: 6.688, lon2: -1.623 },
-    { di: 10, vi: 10, org: org3, owneri: 4, daysBack: 1, duration: 5.5, avg: 90, max: 120, dist: 385, status: "COMPLETED",   lat1: 6.687,  lon1: -1.622, lat2: 9.400, lon2: -0.838 },
+    { route: "metroAccraNsawam", di: 2, vi: 2, org: org1, owneri: 1, daysBack: 1,  duration: 3.0,  avg: 48, max: 65,  dist: 145, status: "COMPLETED",    lat1: 5.555,  lon1: -0.202, lat2: 5.900, lon2: -0.198 },
+    { route: "stcAccraKumasi", di: 7, vi: 7, org: org2, owneri: 3, daysBack: 1,  duration: 4.4,  avg: 75, max: 108, dist: 298, status: "COMPLETED",    lat1: 5.601,  lon1: -0.186, lat2: 6.688, lon2: -1.623 },
+    { route: "vvipKumasiTamale", di: 10, vi: 10, org: org3, owneri: 4, daysBack: 1, duration: 5.5, avg: 90, max: 120, dist: 385, status: "COMPLETED",   lat1: 6.687,  lon1: -1.622, lat2: 9.400, lon2: -0.838 },
     // 3 days ago
-    { di: 3, vi: 3, org: org1, owneri: 1, daysBack: 3,  duration: 2.7,  avg: 55, max: 80,  dist: 148, status: "COMPLETED",    lat1: 5.560,  lon1: -0.200, lat2: 5.752, lon2: -0.210 },
-    { di: 8, vi: 8, org: org2, owneri: 4, daysBack: 3,  duration: 3.2,  avg: 60, max: 88,  dist: 192, status: "COMPLETED",    lat1: 5.598,  lon1: -0.190, lat2: 6.100, lon2: -0.500 },
-    { di: 11, vi: 11, org: org3, owneri: 5, daysBack: 3, duration: 5.8, avg: 92, max: 135, dist: 440, status: "COMPLETED",   lat1: 6.690,  lon1: -1.627, lat2: 9.402, lon2: -0.840 },
+    { route: "metroAccraTema", di: 3, vi: 3, org: org1, owneri: 1, daysBack: 3,  duration: 2.7,  avg: 55, max: 80,  dist: 148, status: "COMPLETED",    lat1: 5.560,  lon1: -0.200, lat2: 5.752, lon2: -0.210 },
+    { route: "stcAccraNkawkaw", di: 8, vi: 8, org: org2, owneri: 4, daysBack: 3,  duration: 3.2,  avg: 60, max: 88,  dist: 192, status: "COMPLETED",    lat1: 5.598,  lon1: -0.190, lat2: 6.100, lon2: -0.500 },
+    { route: "vvipKumasiTamale", di: 11, vi: 11, org: org3, owneri: 5, daysBack: 3, duration: 5.8, avg: 92, max: 135, dist: 440, status: "COMPLETED",   lat1: 6.690,  lon1: -1.627, lat2: 9.402, lon2: -0.840 },
     // 7 days ago
-    { di: 4, vi: 4, org: org1, owneri: 2, daysBack: 7,  duration: 4.1,  avg: 66, max: 95,  dist: 270, status: "COMPLETED",    lat1: 5.600,  lon1: -0.186, lat2: 6.688, lon2: -1.624 },
-    { di: 0, vi: 0, org: org1, owneri: 0, daysBack: 7,  duration: 4.3,  avg: 63, max: 76,  dist: 244, status: "COMPLETED",    lat1: 6.688,  lon1: -1.624, lat2: 5.603, lon2: -0.187 },
-    { di: 5, vi: 5, org: org2, owneri: 2, daysBack: 7,  duration: 5.3,  avg: 74, max: 118, dist: 272, status: "COMPLETED",    lat1: 5.601,  lon1: -0.185, lat2: 6.689, lon2: -1.626 },
+    { route: "metroAccraKumasi", di: 4, vi: 4, org: org1, owneri: 2, daysBack: 7,  duration: 4.1,  avg: 66, max: 95,  dist: 270, status: "COMPLETED",    lat1: 5.600,  lon1: -0.186, lat2: 6.688, lon2: -1.624 },
+    { route: "metroKumasiAccra", di: 0, vi: 0, org: org1, owneri: 0, daysBack: 7,  duration: 4.3,  avg: 63, max: 76,  dist: 244, status: "COMPLETED",    lat1: 6.688,  lon1: -1.624, lat2: 5.603, lon2: -0.187 },
+    { route: "stcAccraKumasi", di: 5, vi: 5, org: org2, owneri: 2, daysBack: 7,  duration: 5.3,  avg: 74, max: 118, dist: 272, status: "COMPLETED",    lat1: 5.601,  lon1: -0.185, lat2: 6.689, lon2: -1.626 },
     // In-progress (active now)
-    { di: 0, vi: 0, org: org1, owneri: 0, daysBack: -0.1, duration: null, avg: null, max: null, dist: null, status: "IN_PROGRESS", lat1: 5.603, lon1: -0.187, lat2: null, lon2: null },
-    { di: 6, vi: 6, org: org2, owneri: 3, daysBack: -0.05, duration: null, avg: null, max: null, dist: null, status: "IN_PROGRESS", lat1: 5.598, lon1: -0.190, lat2: null, lon2: null },
+    { route: "metroAccraTakoradi", di: 0, vi: 0, org: org1, owneri: 0, daysBack: -0.1, duration: null, avg: null, max: null, dist: null, status: "IN_PROGRESS", lat1: 5.603, lon1: -0.187, lat2: null, lon2: null },
+    { route: "stcAccraTakoradi", di: 6, vi: 6, org: org2, owneri: 3, daysBack: -0.05, duration: null, avg: null, max: null, dist: null, status: "IN_PROGRESS", lat1: 5.598, lon1: -0.190, lat2: null, lon2: null },
   ];
 
   const trips = [];
@@ -450,6 +595,7 @@ async function main() {
         vehicleId: vehicles[def.vi].id,
         organizationId: def.org.id,
         carOwnerId: carOwners[def.owneri].id,
+        routeTemplateId: routeTemplates[def.route]?.id,
         startTime,
         endTime,
         startLatitude: def.lat1,
@@ -483,7 +629,7 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 9. VIOLATIONS
+  // 10. VIOLATIONS
   // ══════════════════════════════════════════════════════════════════════════
 
   // trip index, speed, limit, severity, type, lat, lon, hoursBack
@@ -535,7 +681,7 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 10. ALERTS
+  // 11. ALERTS
   // ══════════════════════════════════════════════════════════════════════════
 
   // Recipients to notify: driver of the violation, org admin, authority
@@ -613,13 +759,15 @@ async function main() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 11. AUDIT LOGS
+  // 12. AUDIT LOGS
   // ══════════════════════════════════════════════════════════════════════════
 
   const auditEntries = [
     { userId: staff.id,    action: "ORG_CREATED",     entity: "Organization", entityId: org1.id,      details: { name: org1.name } },
     { userId: staff.id,    action: "ORG_CREATED",     entity: "Organization", entityId: org2.id,      details: { name: org2.name } },
     { userId: staff2.id,   action: "ORG_CREATED",     entity: "Organization", entityId: org3.id,      details: { name: org3.name } },
+    { userId: orgAdmin1.id, action: "ROUTE_TEMPLATE_CREATED", entity: "RouteTemplate", entityId: routeTemplates.metroAccraKumasi.id, details: { name: "Accra to Kumasi" } },
+    { userId: orgAdmin2.id, action: "ROUTE_TEMPLATE_CREATED", entity: "RouteTemplate", entityId: routeTemplates.stcAccraTakoradi.id, details: { name: "Accra to Takoradi" } },
     { userId: staff.id,    action: "DRIVER_ENROLLED",  entity: "Driver",       entityId: drivers[0].id, details: { licenseNumber: driverDefs[0].licence } },
     { userId: orgAdmin1.id, action: "VEHICLE_ADDED",  entity: "Vehicle",      entityId: vehicles[0].id, details: { reg: "GH-1234-22" } },
     { userId: orgAdmin2.id, action: "VEHICLE_ADDED",  entity: "Vehicle",      entityId: vehicles[5].id, details: { reg: "GH-1111-19" } },
@@ -672,6 +820,7 @@ async function main() {
   console.log(`   Organisations : 4 (3 ACTIVE, 1 PENDING)`);
   console.log(`   Vehicles      : ${vehicleDefs.length}`);
   console.log(`   Drivers       : ${driverDefs.length}`);
+  console.log(`   Route templates: ${routeTemplateDefs.length}`);
   console.log(`   Trips         : ${tripDefs.length} (${tripDefs.filter(t => t.status === "IN_PROGRESS").length} in-progress)`);
   console.log(`   Violations    : ${violationDefs.length}`);
   console.log(`   Alerts        : ${alertDefs.length}`);

@@ -13,6 +13,7 @@ import { carOwnersRouter } from "./modules/carOwners/carOwners.routes";
 import { driversRouter } from "./modules/drivers/drivers.routes";
 import { organizationsRouter } from "./modules/organizations/organizations.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
+import { routeTemplatesRouter } from "./modules/routeTemplates/routeTemplates.routes";
 import { tripsRouter } from "./modules/trips/trips.routes";
 import { vehiclesRouter } from "./modules/vehicles/vehicles.routes";
 import { violationsRouter } from "./modules/violations/violations.routes";
@@ -71,6 +72,7 @@ app.use("/api/violations", violationsRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/audit-logs", auditLogsRouter);
+app.use("/api/route-templates", routeTemplatesRouter);
 
 // ── Error handling ───────────────────────────────────────────────────────────
 app.use(notFoundHandler);
