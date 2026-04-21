@@ -1,0 +1,386 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  STAFF
+  ORG_ADMIN
+  ORG_OFFICER
+  DRIVER
+  CAR_OWNER
+  AUTHORITY
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrganizationType {
+  UNION
+  STATION
+}
+
+enum OrganizationStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AuthorityType {
+  AUTHORITY
+  REGULATOR
+}
+
+enum AuthorityStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AuthorityUserRole {
+  ADMIN
+  USER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum TripStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ViolationType {
+  OVER_SPEEDING
+  REPEATED_OVER_SPEEDING
+  SEVERE_OVER_SPEEDING
+}
+
+enum ViolationSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertType {
+  TRIP_STARTED
+  TRIP_ENDED
+  SPEED_VIOLATION
+  REPEATED_VIOLATION
+  SEVERE_VIOLATION
+}
+
+enum DeliveryChannel {
+  IN_APP
+  SMS
+  EMAIL
+  PUSH
+  DASHBOARD
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id                      String               @id @default(cuid())
+  fullName                String
+  phone                   String?              @unique
+  email                   String?              @unique
+  passwordHash            String
+  role                    UserRole
+  status                  UserStatus           @default(ACTIVE)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  pushToken               String?
+  driver                  Driver?
+  carOwner                CarOwner?
+  organizationUsers       OrganizationUser[]
+  authorityUsers          AuthorityUser[]
+  alerts                  Alert[]
+  auditLogs               AuditLog[]
+  refreshTokens           RefreshToken[]
+  onboardedOrganizations  Organization[]       @relation("OrganizationOnboardedBy")
+  onboardedAuthorities    Authority[]          @relation("AuthorityOnboardedBy")
+  failedLoginCount        Int                  @default(0)
+  lockedUntil             DateTime?
+}
+
+model Organization {
+  id                 String               @id @default(cuid())
+  name               String
+  type               OrganizationType
+  contactPerson      String?
+  phone              String?
+  email              String?
+  address            String?
+  status             OrganizationStatus   @default(PENDING)
+  speedLimit         Float                @default(80)
+  onboardedByStaffId String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  onboardedByStaff   User?                @relation("OrganizationOnboardedBy", fields: [onboardedByStaffId], references: [id])
+  organizationUsers  OrganizationUser[]
+  drivers            Driver[]
+  vehicles           Vehicle[]
+  trips              Trip[]
+  violations         Violation[]
+}
+
+model OrganizationUser {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  role           UserRole
+  status         UserStatus     @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+}
+
+model Authority {
+  id                 String             @id @default(cuid())
+  name               String
+  type               AuthorityType
+  contactPerson      String?
+  phone              String?
+  email              String?
+  address            String?
+  status             AuthorityStatus    @default(ACTIVE)
+  onboardedByStaffId String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  onboardedByStaff   User?              @relation("AuthorityOnboardedBy", fields: [onboardedByStaffId], references: [id])
+  authorityUsers     AuthorityUser[]
+
+  @@index([type, status])
+}
+
+model AuthorityUser {
+  id             String            @id @default(cuid())
+  authorityId    String
+  userId         String
+  role           AuthorityUserRole
+  status         UserStatus        @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+
+  authority      Authority         @relation(fields: [authorityId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
+
+  @@unique([authorityId, userId])
+  @@index([authorityId, role])
+  @@index([userId])
+}
+
+model Driver {
+  id                 String                     @id @default(cuid())
+  userId             String                     @unique
+  organizationId     String
+  licenseNumber      String                     @unique
+  nationalId         String?
+  consentGiven       Boolean                    @default(false)
+  status             UserStatus                 @default(ACTIVE)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  user               User                       @relation(fields: [userId], references: [id])
+  organization       Organization               @relation(fields: [organizationId], references: [id])
+  assignments        DriverVehicleAssignment[]
+  trips              Trip[]
+  violations         Violation[]
+}
+
+model CarOwner {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  address            String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user               User         @relation(fields: [userId], references: [id])
+  vehicles           Vehicle[]
+  trips              Trip[]
+  violations         Violation[]
+}
+
+model Vehicle {
+  id                 String                     @id @default(cuid())
+  organizationId     String
+  carOwnerId         String
+  registrationNumber String                     @unique
+  vehicleType        String
+  make               String?
+  model              String?
+  color              String?
+  status             VehicleStatus              @default(ACTIVE)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  organization       Organization               @relation(fields: [organizationId], references: [id])
+  carOwner           CarOwner                   @relation(fields: [carOwnerId], references: [id])
+  assignments        DriverVehicleAssignment[]
+  trips              Trip[]
+  violations         Violation[]
+}
+
+model DriverVehicleAssignment {
+  id                 String       @id @default(cuid())
+  driverId           String
+  vehicleId          String
+  assignedAt         DateTime     @default(now())
+  unassignedAt       DateTime?
+  isActive           Boolean      @default(true)
+
+  driver             Driver       @relation(fields: [driverId], references: [id])
+  vehicle            Vehicle      @relation(fields: [vehicleId], references: [id])
+
+  @@index([driverId, vehicleId])
+}
+
+model Trip {
+  id                 String       @id @default(cuid())
+  driverId           String
+  vehicleId          String
+  organizationId     String
+  carOwnerId         String
+  startTime          DateTime
+  endTime            DateTime?
+  startLatitude      Float?
+  startLongitude     Float?
+  endLatitude        Float?
+  endLongitude       Float?
+  averageSpeed       Float?
+  maxSpeed           Float?
+  distance           Float?
+  status             TripStatus   @default(IN_PROGRESS)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  driver             Driver       @relation(fields: [driverId], references: [id])
+  vehicle            Vehicle      @relation(fields: [vehicleId], references: [id])
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  carOwner           CarOwner     @relation(fields: [carOwnerId], references: [id])
+  locations          TripLocation[]
+  violations         Violation[]
+  alerts             Alert[]
+}
+
+model TripLocation {
+  id                 String       @id @default(cuid())
+  tripId             String
+  latitude           Float
+  longitude          Float
+  speed              Float?
+  recordedAt         DateTime     @default(now())
+
+  trip               Trip         @relation(fields: [tripId], references: [id])
+
+  @@index([tripId, recordedAt])
+}
+
+model Violation {
+  id                 String              @id @default(cuid())
+  tripId             String
+  driverId           String
+  vehicleId          String
+  organizationId     String
+  carOwnerId         String
+  violationType      ViolationType
+  speed              Float
+  speedLimit         Float
+  latitude           Float?
+  longitude          Float?
+  severity           ViolationSeverity
+  violationTime      DateTime            @default(now())
+  status             String?
+  createdAt          DateTime            @default(now())
+
+  trip               Trip                @relation(fields: [tripId], references: [id])
+  driver             Driver              @relation(fields: [driverId], references: [id])
+  vehicle            Vehicle             @relation(fields: [vehicleId], references: [id])
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  carOwner           CarOwner            @relation(fields: [carOwnerId], references: [id])
+  alerts             Alert[]
+}
+
+model Alert {
+  id                 String           @id @default(cuid())
+  tripId             String?
+  violationId        String?
+  recipientUserId    String
+  recipientRole      UserRole
+  alertType          AlertType
+  message            String
+  deliveryChannel    DeliveryChannel
+  deliveryStatus     DeliveryStatus   @default(PENDING)
+  isRead             Boolean          @default(false)
+  readAt             DateTime?
+  sentAt             DateTime?
+  createdAt          DateTime         @default(now())
+
+  trip               Trip?            @relation(fields: [tripId], references: [id])
+  violation          Violation?       @relation(fields: [violationId], references: [id])
+  recipientUser      User             @relation(fields: [recipientUserId], references: [id])
+
+  @@index([recipientUserId, createdAt])
+}
+
+model AuditLog {
+  id                 String       @id @default(cuid())
+  userId             String?
+  action             String
+  entityType         String
+  entityId           String?
+  details            Json?
+  createdAt          DateTime     @default(now())
+
+  user               User?        @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id          String   @id @default(cuid())
+  identifier  String
+  ipAddress   String?
+  success     Boolean
+  createdAt   DateTime @default(now())
+
+  @@index([identifier, createdAt])
+}

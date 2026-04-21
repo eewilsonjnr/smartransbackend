@@ -1,0 +1,19 @@
+node_modules/
+dist/
+
+# Environment — NEVER commit real credentials
+.env
+.env.local
+.env.production
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

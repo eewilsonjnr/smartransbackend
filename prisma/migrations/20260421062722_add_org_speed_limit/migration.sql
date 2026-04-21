@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Organization" ADD COLUMN     "speedLimit" DOUBLE PRECISION NOT NULL DEFAULT 80;
