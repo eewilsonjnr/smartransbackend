@@ -22,10 +22,26 @@ import {
 import { writeAuditLog } from "../../utils/audit";
 import { canManageSystem } from "../../utils/access";
 
-const loginSchema = z.object({
-  identifier: z.string().min(3),
-  password: z.string().min(1),
-});
+const optionalLoginIdentifier = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().min(3).optional(),
+);
+
+const loginSchema = z
+  .object({
+    identifier: optionalLoginIdentifier,
+    email: optionalLoginIdentifier,
+    phone: optionalLoginIdentifier,
+    password: z.string().min(1),
+  })
+  .transform(({ identifier, email, phone, password }) => ({
+    identifier: (identifier ?? email ?? phone ?? "").trim(),
+    password,
+  }))
+  .refine(({ identifier }) => identifier.length >= 3, {
+    path: ["identifier"],
+    message: "Email, phone, or identifier is required.",
+  });
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(1),

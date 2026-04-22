@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import { env } from "./config/env";
+import { AppError } from "./common/app-error";
 import { alertsRouter } from "./modules/alerts/alerts.routes";
 import { assignmentsRouter } from "./modules/assignments/assignments.routes";
 import { auditLogsRouter } from "./modules/auditLogs/auditLogs.routes";
@@ -25,9 +26,11 @@ const app = express();
 app.use(helmet());
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-const allowedOrigins = env.ALLOWED_ORIGINS
-  ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : [];
+const allowedOrigins = new Set([
+  "https://smartransfrontend.vercel.app",
+  "https://smartransconnect.vercel.app",
+  ...(env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()) : []),
+]);
 
 app.use(
   cors({
@@ -35,10 +38,10 @@ app.use(
       env.NODE_ENV === "production"
         ? (origin, callback) => {
             // Allow requests with no origin (mobile apps, Postman) or whitelisted origins
-            if (!origin || allowedOrigins.includes(origin)) {
+            if (!origin || allowedOrigins.has(origin.replace(/\/+$/, ""))) {
               callback(null, true);
             } else {
-              callback(new Error(`Origin ${origin} not allowed by CORS policy.`));
+              callback(new AppError(403, `Origin ${origin} not allowed by CORS policy.`));
             }
           }
         : true, // open in development
