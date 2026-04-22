@@ -55,8 +55,14 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "256kb" }));
 
 // ── Health check ─────────────────────────────────────────────────────────────
-app.get("/health", (_req, res) => {
-  res.json({ success: true, message: "SmarTrans backend is running", env: env.NODE_ENV });
+const healthResponse = { success: true, message: "SmarTrans backend is running", env: env.NODE_ENV };
+
+app.get("/", (_req, res) => {
+  res.json(healthResponse);
+});
+
+app.get(["/health", "/api/health"], (_req, res) => {
+  res.json(healthResponse);
 });
 
 // ── Routes ───────────────────────────────────────────────────────────────────
