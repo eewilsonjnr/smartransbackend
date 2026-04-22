@@ -30,7 +30,13 @@ export const requireAuth = asyncHandler(async (req: Request, _res: Response, nex
   }
 
   const token = header.slice("Bearer ".length);
-  const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  let decoded: JwtPayload;
+
+  try {
+    decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  } catch {
+    throw new AppError(401, "Invalid or expired authentication token.");
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: decoded.sub },
