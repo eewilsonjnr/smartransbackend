@@ -466,6 +466,116 @@ tripsRouter.patch(
   }),
 );
 
+// Driver-initiated distress alert — notifies org users and car owner
+tripsRouter.post(
+  "/:id/distress",
+  requireRoles("DRIVER", "SUPER_ADMIN", "STAFF", "ORG_ADMIN", "ORG_OFFICER"),
+  asyncHandler(async (req, res) => {
+    const tripId = requiredParam(req, "id");
+
+    const trip = await prisma.trip.findUniqueOrThrow({
+      where: { id: tripId },
+      include: {
+        driver: { include: { user: true } },
+        vehicle: true,
+        carOwner: { include: { user: true } },
+        organization: {
+          include: {
+            organizationUsers: { include: { user: true } },
+          },
+        },
+      },
+    });
+
+    if (trip.status !== "IN_PROGRESS") {
+      throw new AppError(400, "Trip is not in progress.");
+    }
+
+    if (req.auth!.role === "DRIVER" && trip.driver.userId !== req.auth!.id) {
+      throw new AppError(403, "Drivers can only send distress for their own trips.");
+    }
+
+    const message = `DISTRESS: ${trip.driver.user.fullName} has sent an emergency alert on vehicle ${trip.vehicle.registrationNumber}.`;
+
+    const recipients: Array<{ id: string; role: "CAR_OWNER" | "ORG_ADMIN" | "ORG_OFFICER" | "STAFF" }> = [
+      { id: trip.carOwner.userId, role: "CAR_OWNER" },
+      ...trip.organization.organizationUsers.map((ou) => ({
+        id: ou.userId,
+        role: ou.role as "ORG_ADMIN" | "ORG_OFFICER",
+      })),
+    ];
+
+    await Promise.all(
+      recipients.map((r) =>
+        createAlert(prisma, {
+          recipientUserId: r.id,
+          recipientRole: r.role,
+          alertType: "DRIVER_DISTRESS",
+          message,
+          tripId: trip.id,
+        }),
+      ),
+    );
+
+    res.json({ success: true, message: "Distress alert sent." });
+  }),
+);
+
+// System-reported idle alert — called by mobile when driver has not moved for threshold duration
+tripsRouter.post(
+  "/:id/idle-alert",
+  requireRoles("DRIVER", "SUPER_ADMIN", "STAFF", "ORG_ADMIN", "ORG_OFFICER"),
+  asyncHandler(async (req, res) => {
+    const tripId = requiredParam(req, "id");
+
+    const trip = await prisma.trip.findUniqueOrThrow({
+      where: { id: tripId },
+      include: {
+        driver: { include: { user: true } },
+        vehicle: true,
+        carOwner: { include: { user: true } },
+        organization: {
+          include: {
+            organizationUsers: { include: { user: true } },
+          },
+        },
+      },
+    });
+
+    if (trip.status !== "IN_PROGRESS") {
+      throw new AppError(400, "Trip is not in progress.");
+    }
+
+    if (req.auth!.role === "DRIVER" && trip.driver.userId !== req.auth!.id) {
+      throw new AppError(403, "Drivers can only report idle for their own trips.");
+    }
+
+    const message = `IDLE: ${trip.driver.user.fullName} on vehicle ${trip.vehicle.registrationNumber} has not moved for an extended period.`;
+
+    const recipients: Array<{ id: string; role: "CAR_OWNER" | "ORG_ADMIN" | "ORG_OFFICER" | "STAFF" }> = [
+      { id: trip.carOwner.userId, role: "CAR_OWNER" },
+      ...trip.organization.organizationUsers.map((ou) => ({
+        id: ou.userId,
+        role: ou.role as "ORG_ADMIN" | "ORG_OFFICER",
+      })),
+    ];
+
+    await Promise.all(
+      recipients.map((r) =>
+        createAlert(prisma, {
+          recipientUserId: r.id,
+          recipientRole: r.role,
+          alertType: "DRIVER_IDLE",
+          message,
+          tripId: trip.id,
+        }),
+      ),
+    );
+
+    res.json({ success: true, message: "Idle alert sent." });
+  }),
+);
+
 tripsRouter.patch(
   "/:id/end",
   requireRoles("SUPER_ADMIN", "STAFF", "ORG_ADMIN", "ORG_OFFICER", "DRIVER"),
